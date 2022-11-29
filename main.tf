@@ -2,8 +2,8 @@
 locals {
   Ressource_Group_Name     = "christian-heimke-green-rg"
   Ressource_Group_Location = "West Europe"
-  Ssh_Username = "techstarter"
-  Ssh_Password = "techstarter2342!"
+  Ssh_Username             = "techstarter"
+  Ssh_Password             = "techstarter2342!"
 }
 
 # public ssh key
