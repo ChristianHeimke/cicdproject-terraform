@@ -2,13 +2,15 @@
 locals {
   Ressource_Group_Name     = "christian-heimke-green-rg"
   Ressource_Group_Location = "West Europe"
+  Ssh_Username = "techstarter"
+  Ssh_Password = "techstarter2342!"
 }
 
 # public ssh key
 resource "azurerm_ssh_public_key" "sshkey" {
   name                = "christian"
   location            = local.Ressource_Group_Location
-  resource_group_name = azurerm_resource_group.cicdproject.name
+  resource_group_name = local.Ressource_Group_Name
   public_key          = file("../sshkey.pub")
 }
 
@@ -21,16 +23,16 @@ resource "azurerm_resource_group" "cicdproject" {
 # jenkins public ip
 resource "azurerm_public_ip" "jenkins_public_ip" {
   name                = "jenkins-public-ip"
-  location            = azurerm_resource_group.cicdproject.location
-  resource_group_name = azurerm_resource_group.cicdproject.name
+  location            = local.Ressource_Group_Location
+  resource_group_name = local.Ressource_Group_Name
   allocation_method   = "Dynamic"
 }
 
 # webserver public ip
 resource "azurerm_public_ip" "webserver_public_ip" {
   name                = "webserver-public-ip"
-  location            = azurerm_resource_group.cicdproject.location
-  resource_group_name = azurerm_resource_group.cicdproject.name
+  location            = local.Ressource_Group_Location
+  resource_group_name = local.Ressource_Group_Name
   allocation_method   = "Dynamic"
 }
 
@@ -38,8 +40,8 @@ resource "azurerm_public_ip" "webserver_public_ip" {
 resource "azurerm_virtual_network" "main" {
   name                = "cicidproject-network"
   address_space       = ["10.0.0.0/16"]
-  location            = azurerm_resource_group.cicdproject.location
-  resource_group_name = azurerm_resource_group.cicdproject.name
+  location            = local.Ressource_Group_Location
+  resource_group_name = local.Ressource_Group_Name
   depends_on = [
     azurerm_resource_group.cicdproject
   ]
@@ -48,7 +50,7 @@ resource "azurerm_virtual_network" "main" {
 # subnet
 resource "azurerm_subnet" "internal" {
   name                 = "internal"
-  resource_group_name  = azurerm_resource_group.cicdproject.name
+  resource_group_name  = local.Ressource_Group_Name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = ["10.0.2.0/24"]
   depends_on = [
@@ -59,8 +61,8 @@ resource "azurerm_subnet" "internal" {
 # netzwerk für den jenkins
 resource "azurerm_network_interface" "jenkins" {
   name                = "jenkins-nic"
-  location            = azurerm_resource_group.cicdproject.location
-  resource_group_name = azurerm_resource_group.cicdproject.name
+  location            = local.Ressource_Group_Location
+  resource_group_name = local.Ressource_Group_Name
 
   ip_configuration {
     name                          = "cicdprojectnetwork"
@@ -72,8 +74,8 @@ resource "azurerm_network_interface" "jenkins" {
 
 resource "azurerm_network_security_group" "nsg" {
   name                = "cicdproject-nsg"
-  location            = azurerm_resource_group.cicdproject.location
-  resource_group_name = azurerm_resource_group.cicdproject.name
+  location            = local.Ressource_Group_Location
+  resource_group_name = local.Ressource_Group_Name
 }
 
 resource "azurerm_network_security_rule" "sshd" {
@@ -86,7 +88,7 @@ resource "azurerm_network_security_rule" "sshd" {
   destination_port_range      = "22"
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
-  resource_group_name         = azurerm_resource_group.cicdproject.name
+  resource_group_name         = local.Ressource_Group_Name
   network_security_group_name = azurerm_network_security_group.nsg.name
 }
 
@@ -100,7 +102,7 @@ resource "azurerm_network_security_rule" "web" {
   destination_port_range      = "80"
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
-  resource_group_name         = azurerm_resource_group.cicdproject.name
+  resource_group_name         = local.Ressource_Group_Name
   network_security_group_name = azurerm_network_security_group.nsg.name
 }
 
@@ -114,14 +116,14 @@ resource "azurerm_network_security_rule" "allout" {
   destination_port_range      = "*"
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
-  resource_group_name         = azurerm_resource_group.cicdproject.name
+  resource_group_name         = local.Ressource_Group_Name
   network_security_group_name = azurerm_network_security_group.nsg.name
 }
 # netzwerk für den webserver
 resource "azurerm_network_interface" "webserver" {
   name                = "webserver-nic"
-  location            = azurerm_resource_group.cicdproject.location
-  resource_group_name = azurerm_resource_group.cicdproject.name
+  location            = local.Ressource_Group_Location
+  resource_group_name = local.Ressource_Group_Name
 
   ip_configuration {
     name                          = "cicdprojectnetwork"
@@ -144,13 +146,13 @@ resource "azurerm_network_interface_security_group_association" "jenkinsnsg" {
 # jenkins vm mit netzwerk und ip
 resource "azurerm_linux_virtual_machine" "jenkins" {
   name                  = "jenkins-vm"
-  location              = azurerm_resource_group.cicdproject.location
-  resource_group_name   = azurerm_resource_group.cicdproject.name
+  location              = local.Ressource_Group_Location
+  resource_group_name   = local.Ressource_Group_Name
   network_interface_ids = [azurerm_network_interface.jenkins.id]
   size                  = "Standard_B1s"
   computer_name         = "jenkins"
-  admin_username        = "techstarter"
-  admin_password        = "techstarter2342!"
+  admin_username        = local.Ssh_Username
+  admin_password        = local.Ssh_Password
 
   source_image_reference {
     publisher = "Canonical"
@@ -165,8 +167,8 @@ resource "azurerm_linux_virtual_machine" "jenkins" {
   }
 
   admin_ssh_key {
-    username   = "techstarter"
-    public_key = file("../sshkey.pub")
+    username   = local.Ssh_Username
+    public_key = azurerm_ssh_public_key.sshkey.public_key
   }
 
   tags = {
@@ -177,13 +179,13 @@ resource "azurerm_linux_virtual_machine" "jenkins" {
 # webserver vm mit netzwerk und ip
 resource "azurerm_linux_virtual_machine" "webserver" {
   name                  = "webserver-vm"
-  location              = azurerm_resource_group.cicdproject.location
-  resource_group_name   = azurerm_resource_group.cicdproject.name
+  location              = local.Ressource_Group_Location
+  resource_group_name   = local.Ressource_Group_Name
   network_interface_ids = [azurerm_network_interface.webserver.id]
   size                  = "Standard_B1s"
   computer_name         = "webserver"
-  admin_username        = "techstarter"
-  admin_password        = "techstarter2342!"
+  admin_username        = local.Ssh_Username
+  admin_password        = local.Ssh_Password
 
   source_image_reference {
     publisher = "Canonical"
@@ -199,11 +201,11 @@ resource "azurerm_linux_virtual_machine" "webserver" {
   }
 
   admin_ssh_key {
-    username   = "techstarter"
-    public_key = file("../sshkey.pub")
+    username   = local.Ssh_Username
+    public_key = azurerm_ssh_public_key.sshkey.public_key
   }
 
   tags = {
-    environment = "jenkins"
+    environment = "webserver"
   }
 }
