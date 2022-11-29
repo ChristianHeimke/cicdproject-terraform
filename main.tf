@@ -6,19 +6,23 @@ locals {
   Ssh_Password             = "techstarter2342!"
 }
 
+## resourcen gruppe erstellen
+resource "azurerm_resource_group" "cicdproject" {
+  name     = local.Ressource_Group_Name
+  location = local.Ressource_Group_Location
+}
+
 # public ssh key
 resource "azurerm_ssh_public_key" "sshkey" {
   name                = "christian"
   location            = local.Ressource_Group_Location
   resource_group_name = local.Ressource_Group_Name
   public_key          = file("./sshkey.pub")
+  depends_on = [
+    azurerm_resource_group.cicdproject
+  ]
 }
 
-## resourcen gruppe erstellen
-resource "azurerm_resource_group" "cicdproject" {
-  name     = local.Ressource_Group_Name
-  location = local.Ressource_Group_Location
-}
 
 # jenkins public ip
 resource "azurerm_public_ip" "jenkins_public_ip" {
@@ -26,6 +30,9 @@ resource "azurerm_public_ip" "jenkins_public_ip" {
   location            = local.Ressource_Group_Location
   resource_group_name = local.Ressource_Group_Name
   allocation_method   = "Dynamic"
+  depends_on = [
+    azurerm_resource_group.cicdproject
+  ]
 }
 
 # webserver public ip
@@ -34,6 +41,9 @@ resource "azurerm_public_ip" "webserver_public_ip" {
   location            = local.Ressource_Group_Location
   resource_group_name = local.Ressource_Group_Name
   allocation_method   = "Dynamic"
+  depends_on = [
+    azurerm_resource_group.cicdproject
+  ]
 }
 
 # eigenes netzwerk
@@ -70,12 +80,18 @@ resource "azurerm_network_interface" "jenkins" {
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.jenkins_public_ip.id
   }
+  depends_on = [
+    azurerm_public_ip.jenkins_public_ip
+  ]
 }
 
 resource "azurerm_network_security_group" "nsg" {
   name                = "cicdproject-nsg"
   location            = local.Ressource_Group_Location
   resource_group_name = local.Ressource_Group_Name
+  depends_on = [
+    azurerm_resource_group.cicdproject
+  ]
 }
 
 resource "azurerm_network_security_rule" "sshd" {
@@ -90,6 +106,10 @@ resource "azurerm_network_security_rule" "sshd" {
   destination_address_prefix  = "*"
   resource_group_name         = local.Ressource_Group_Name
   network_security_group_name = azurerm_network_security_group.nsg.name
+
+  depends_on = [
+    azurerm_network_security_group.nsg
+  ]
 }
 
 resource "azurerm_network_security_rule" "web" {
@@ -104,6 +124,9 @@ resource "azurerm_network_security_rule" "web" {
   destination_address_prefix  = "*"
   resource_group_name         = local.Ressource_Group_Name
   network_security_group_name = azurerm_network_security_group.nsg.name
+  depends_on = [
+    azurerm_network_security_group.nsg
+  ]
 }
 
 resource "azurerm_network_security_rule" "allout" {
@@ -118,6 +141,9 @@ resource "azurerm_network_security_rule" "allout" {
   destination_address_prefix  = "*"
   resource_group_name         = local.Ressource_Group_Name
   network_security_group_name = azurerm_network_security_group.nsg.name
+  depends_on = [
+    azurerm_network_security_group.nsg
+  ]
 }
 # netzwerk für den webserver
 resource "azurerm_network_interface" "webserver" {
@@ -131,16 +157,27 @@ resource "azurerm_network_interface" "webserver" {
     private_ip_address_allocation = "Dynamic"
     public_ip_address_id          = azurerm_public_ip.webserver_public_ip.id
   }
+  depends_on = [
+    azurerm_public_ip.webserver_public_ip
+  ]
 }
 
 resource "azurerm_network_interface_security_group_association" "webservernsg" {
   network_interface_id      = azurerm_network_interface.webserver.id
   network_security_group_id = azurerm_network_security_group.nsg.id
+  depends_on = [
+    azurerm_network_interface.webserver,
+    azurerm_network_security_group.nsg
+  ]
 }
 
 resource "azurerm_network_interface_security_group_association" "jenkinsnsg" {
   network_interface_id      = azurerm_network_interface.jenkins.id
   network_security_group_id = azurerm_network_security_group.nsg.id
+  depends_on = [
+    azurerm_network_interface.jenkins,
+    azurerm_network_security_group.nsg
+  ]
 }
 
 # jenkins vm mit netzwerk und ip
@@ -174,6 +211,12 @@ resource "azurerm_linux_virtual_machine" "jenkins" {
   tags = {
     environment = "jenkins"
   }
+  depends_on = [
+    azurerm_network_interface.jenkins,
+    azurerm_network_security_group.nsg,
+    azurerm_ssh_public_key.sshkey,
+    azurerm_resource_group.cicdproject
+  ]
 }
 
 # webserver vm mit netzwerk und ip
@@ -208,4 +251,10 @@ resource "azurerm_linux_virtual_machine" "webserver" {
   tags = {
     environment = "webserver"
   }
+  depends_on = [
+    azurerm_network_interface.jenkins,
+    azurerm_network_security_group.nsg,
+    azurerm_ssh_public_key.sshkey,
+    azurerm_resource_group.cicdproject
+  ]
 }
