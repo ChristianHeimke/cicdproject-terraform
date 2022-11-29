@@ -11,7 +11,7 @@ resource "azurerm_ssh_public_key" "sshkey" {
   name                = "christian"
   location            = local.Ressource_Group_Location
   resource_group_name = local.Ressource_Group_Name
-  public_key          = file("../sshkey.pub")
+  public_key          = file("./sshkey.pub")
 }
 
 ## resourcen gruppe erstellen
