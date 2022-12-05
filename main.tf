@@ -1,6 +1,6 @@
 # deklaration der ressourcen gruppe und location
 locals {
-  Ressource_Group_Name     = "christian-heimke-blue-rg"
+  Ressource_Group_Name     = "christian-heimke-green-rg"
   Ressource_Group_Location = "West Europe"
   Ssh_Username             = "techstarter"
   Ssh_Password             = "techstarter2342!"
